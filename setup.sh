@@ -36,7 +36,53 @@ install_homebrew_packages() {
 }
 
 # ------------------------
-# 2. Shell and Dotfiles
+# 2. Git & SSH Key Setup
+# ------------------------
+
+configure_git() {
+  echo "📝 Configuring Git user..."
+  git config --global user.name "Your Name"
+  git config --global user.email "your_email@example.com"
+}
+
+generate_ssh_key() {
+  if [ ! -f "$HOME/.ssh/id_ed25519" ]; then
+    echo "🔐 Generating SSH key..."
+    ssh-keygen -t ed25519 -C "your_email@example.com" -f "$HOME/.ssh/id_ed25519" -N ""
+    eval "$(ssh-agent -s)"
+    mkdir -p ~/.ssh
+    cat <<EOF >> ~/.ssh/config
+
+Host *
+  AddKeysToAgent yes
+  UseKeychain yes
+  IdentityFile ~/.ssh/id_ed25519
+EOF
+    ssh-add --apple-use-keychain ~/.ssh/id_ed25519
+    echo "🔑 SSH key generated. Public key:"
+    cat ~/.ssh/id_ed25519.pub
+
+    echo "🌐 Uploading SSH key to GitHub..."
+    echo "Enter GitHub personal access token (or leave blank to skip):"
+    read -s GH_TOKEN
+    if [ -n "$GH_TOKEN" ]; then
+      echo "Enter a name for this SSH key (e.g., MacBook-Pro):"
+      read KEY_TITLE
+      PUB_KEY=$(cat ~/.ssh/id_ed25519.pub)
+      curl -s -H "Authorization: token $GH_TOKEN" \
+           --data "{\"title\":\"$KEY_TITLE\",\"key\":\"$PUB_KEY\"}" \
+           https://api.github.com/user/keys
+      echo "✅ SSH key uploaded to GitHub."
+    else
+      echo "⏩ Skipped GitHub upload (no token provided)."
+    fi
+  else
+    echo "✅ SSH key already exists."
+  fi
+}
+
+# ------------------------
+# 3. Shell and Dotfiles
 # ------------------------
 
 install_oh_my_zsh() {
@@ -71,6 +117,11 @@ source $ZSH/oh-my-zsh.sh
 # NVM Setup
 export NVM_DIR="$HOME/.nvm"
 [ -s "$(brew --prefix nvm)/nvm.sh" ] && \. "$(brew --prefix nvm)/nvm.sh"
+
+# pyenv setup
+export PYENV_ROOT="$HOME/.pyenv"
+[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init -)"
 EOF
 }
 
@@ -83,7 +134,7 @@ link_dotfiles() {
 }
 
 # ------------------------
-# 3. Node Environment
+# 4. Development Environments
 # ------------------------
 
 setup_node() {
@@ -93,8 +144,19 @@ setup_node() {
   nvm install --lts
 }
 
+setup_python() {
+  if command -v pyenv &>/dev/null; then
+    echo "🐍 Installing Python 3.12.2 with pyenv..."
+    pyenv install 3.12.2 || echo "⚠️ Python 3.12.2 may already be installed."
+    pyenv global 3.12.2
+    echo "✅ Python setup complete."
+  else
+    echo "⚠️ pyenv not found. Skipping Python setup."
+  fi
+}
+
 # ------------------------
-# 4. GUI App Installations
+# 5. GUI App Installations
 # ------------------------
 
 download_apps() {
@@ -130,7 +192,7 @@ install_gui_apps() {
 }
 
 # ------------------------
-# 5. Default Browser Setup
+# 6. System Configuration
 # ------------------------
 
 set_default_browser() {
@@ -143,84 +205,56 @@ set_default_browser() {
   defaultbrowser chrome
 }
 
-# ------------------------
-# 6. Git & SSH Key Setup
-# ------------------------
-
-configure_git() {
-  echo "📝 Configuring Git user..."
-  git config --global user.name "Your Name"
-  git config --global user.email "your_email@example.com"
-}
-
-generate_ssh_key() {
-  if [ ! -f "$HOME/.ssh/id_ed25519" ]; then
-    echo "🔐 Generating SSH key..."
-    ssh-keygen -t ed25519 -C "your_email@example.com" -f "$HOME/.ssh/id_ed25519" -N ""
-    eval "$(ssh-agent -s)"
-    mkdir -p ~/.ssh
-    cat <<EOF >> ~/.ssh/config
-
-Host *
-  AddKeysToAgent yes
-  UseKeychain yes
-  IdentityFile ~/.ssh/id_ed25519
-EOF
-    ssh-add --apple-use-keychain ~/.ssh/id_ed25519
-    echo "🔑 SSH key generated. Public key:"
-    cat ~/.ssh/id_ed25519.pub
-
-    echo "🌐 Uploading SSH key to GitHub..."
-    echo "Enter GitHub personal access token (or leave blank to skip):"
-    read -s GH_TOKEN
-    if [ -n "$GH_TOKEN" ]; then
-      echo "Enter a name for this SSH key (e.g., MacBook-Pro):"
-      read KEY_TITLE
-      PUB_KEY=$(cat ~/.ssh/id_ed25519.pub)
-      curl -s -H "Authorization: token $GH_TOKEN"            --data "{"title":"$KEY_TITLE","key":"$PUB_KEY"}"            https://api.github.com/user/keys
-      echo "✅ SSH key uploaded to GitHub."
-    else
-      echo "⏩ Skipped GitHub upload (no token provided)."
-    fi
-  else
-    echo "✅ SSH key already exists."
-  fi
-}
 
 # ------------------------
-
-
-# ------------------------
-# 7. Python via pyenv
-# ------------------------
-
-setup_python() {
-  if command -v pyenv &>/dev/null; then
-    echo "🐍 Installing Python 3.12.2 with pyenv..."
-    pyenv install 3.12.2 || echo "⚠️ Python 3.12.2 may already be installed."
-    pyenv global 3.12.2
-    echo "✅ Python setup complete."
-  else
-    echo "⚠️ pyenv not found. Skipping Python setup."
-  fi
-}
 # MAIN EXECUTION FLOW
 # ------------------------
 
+echo "🚀 Starting optimized Mac dev environment setup..."
+echo ""
+
+# 1. Prerequisites
+echo "📋 Step 1: Installing Prerequisites..."
 install_xcode_cli
 install_homebrew
 install_homebrew_packages
+echo "✅ Prerequisites complete!"
+echo ""
+
+# 2. Git & SSH Setup (before dotfiles)
+echo "📋 Step 2: Setting up Git & SSH..."
+configure_git
+generate_ssh_key
+echo "✅ Git & SSH setup complete!"
+echo ""
+
+# 3. Shell & Dotfiles
+echo "📋 Step 3: Configuring Shell & Dotfiles..."
 install_oh_my_zsh
 configure_zshrc
 link_dotfiles
+echo "✅ Shell & Dotfiles complete!"
+echo ""
+
+# 4. Development Environments
+echo "📋 Step 4: Setting up Development Environments..."
 setup_node
+setup_python
+echo "✅ Development environments complete!"
+echo ""
+
+# 5. GUI Applications
+echo "📋 Step 5: Installing GUI Applications..."
 download_apps
 install_gui_apps
-set_default_browser
-configure_git
-generate_ssh_key
+echo "✅ GUI applications complete!"
+echo ""
 
-setup_python
+# 6. System Configuration
+echo "📋 Step 6: Final System Configuration..."
+set_default_browser
+echo "✅ System configuration complete!"
+echo ""
 echo "✅ All done! Setup log saved to $LOG_FILE"
 echo "📎 Note: Windsurf must be installed manually from https://windsurf.dev"
 echo "🚀 Restart your terminal or run: source ~/.zshrc"
