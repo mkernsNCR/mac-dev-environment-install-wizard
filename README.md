@@ -41,6 +41,19 @@ chmod +x setup.sh
 
 ---
 
+## 🧨 Teardown / Reset
+
+If you ever want to completely undo what `setup.sh` did and start fresh, run:
+
+```bash
+chmod +x teardown.sh
+./teardown.sh
+```
+
+> ⚠️ This will remove all the packages and apps installed by `setup.sh`, as well as your SSH keys and Git config.
+
+---
+
 ## 🗂 Dotfiles
 
 This setup assumes you have a dotfiles repo with a `.zshrc` and `.gitconfig`. The script automatically links them from:
