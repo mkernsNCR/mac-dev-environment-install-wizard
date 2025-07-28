@@ -188,6 +188,22 @@ EOF
 }
 
 # ------------------------
+
+
+# ------------------------
+# 7. Python via pyenv
+# ------------------------
+
+setup_python() {
+  if command -v pyenv &>/dev/null; then
+    echo "🐍 Installing Python 3.12.2 with pyenv..."
+    pyenv install 3.12.2 || echo "⚠️ Python 3.12.2 may already be installed."
+    pyenv global 3.12.2
+    echo "✅ Python setup complete."
+  else
+    echo "⚠️ pyenv not found. Skipping Python setup."
+  fi
+}
 # MAIN EXECUTION FLOW
 # ------------------------
 
@@ -204,6 +220,7 @@ set_default_browser
 configure_git
 generate_ssh_key
 
+setup_python
 echo "✅ All done! Setup log saved to $LOG_FILE"
 echo "📎 Note: Windsurf must be installed manually from https://windsurf.dev"
 echo "🚀 Restart your terminal or run: source ~/.zshrc"
