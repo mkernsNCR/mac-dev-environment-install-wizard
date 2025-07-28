@@ -50,7 +50,3 @@ https://github.com/yourusername/dotfiles.git
 Update the script with your actual repo URL.
 
 ---
-
-## 🙏 Credits
-
-Script generated with the help of OpenAI’s ChatGPT and lots of coffee ☕.
