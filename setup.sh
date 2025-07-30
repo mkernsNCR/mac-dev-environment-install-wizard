@@ -32,12 +32,7 @@ install_homebrew_packages() {
   echo "🔄 Updating Homebrew..."
   brew update
   echo "📦 Installing packages from Brewfile..."
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  if [[ ! -f "$SCRIPT_DIR/Brewfile" ]]; then
-    echo "❌ Brewfile not found at $SCRIPT_DIR/Brewfile"
-    exit 1
-  fi
-  brew bundle --file="$SCRIPT_DIR/Brewfile"
+  brew bundle --file=~/Brewfile
 }
 
 # ------------------------
@@ -74,7 +69,9 @@ EOF
       echo "Enter a name for this SSH key (e.g., MacBook-Pro):"
       read KEY_TITLE
       PUB_KEY=$(cat ~/.ssh/id_ed25519.pub)
-      curl -s -H "Authorization: token $GH_TOKEN"            --data "{"title":"$KEY_TITLE","key":"$PUB_KEY"}"            https://api.github.com/user/keys
+      curl -s -H "Authorization: token $GH_TOKEN" \
+           --data "{\"title\":\"$KEY_TITLE\",\"key\":\"$PUB_KEY\"}" \
+           https://api.github.com/user/keys
       echo "✅ SSH key uploaded to GitHub."
     else
       echo "⏩ Skipped GitHub upload (no token provided)."
@@ -129,8 +126,8 @@ EOF
 }
 
 link_dotfiles() {
-  echo "🔗 Linking dotfiles from GitHub..."
-  DOTFILES_REPO="https://github.com/yourusername/dotfiles.git"
+  echo "🔗 Linking dotfiles from GitHub via SSH..."
+  DOTFILES_REPO="git@github.com:mkernsNCR/my-dotfiles.git"
   git clone "$DOTFILES_REPO" "$HOME/dotfiles" || echo "⚠️ Skipping clone (already exists?)"
   ln -sf "$HOME/dotfiles/.gitconfig" "$HOME/.gitconfig"
   ln -sf "$HOME/dotfiles/.zshrc" "$HOME/.zshrc"
