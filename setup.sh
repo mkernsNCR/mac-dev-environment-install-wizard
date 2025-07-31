@@ -458,9 +458,14 @@ plugins=(
 
 source $ZSH/oh-my-zsh.sh
 
-# NVM Setup
+# NVM Setup (Homebrew installation)
 export NVM_DIR="$HOME/.nvm"
-[ -s "$(brew --prefix nvm)/nvm.sh" ] && \. "$(brew --prefix nvm)/nvm.sh"
+if command -v brew &>/dev/null && brew list nvm &>/dev/null; then
+  # Source NVM from Homebrew installation
+  source "$(brew --prefix nvm)/nvm.sh"
+  # Source NVM bash completion if available
+  [[ -r "$(brew --prefix nvm)/etc/bash_completion.d/nvm" ]] && source "$(brew --prefix nvm)/etc/bash_completion.d/nvm"
+fi
 
 # pyenv setup
 export PYENV_ROOT="$HOME/.pyenv"
@@ -510,27 +515,44 @@ link_dotfiles() {
 setup_node() {
     log_info "Setting up Node.js development environment..."
     
-    # Ensure NVM directory exists
-    [[ "$DRY_RUN" != "true" ]] && mkdir -p ~/.nvm
-    
-    # Load NVM if available
-    export NVM_DIR="$HOME/.nvm"
-    local nvm_script=""
-    
-    if [[ -s "$(brew --prefix)/share/nvm/nvm.sh" ]]; then
-        nvm_script="$(brew --prefix)/share/nvm/nvm.sh"
-    elif [[ -s "$NVM_DIR/nvm.sh" ]]; then
-        nvm_script="$NVM_DIR/nvm.sh"
+    # Check if NVM is installed via Homebrew
+    if ! command -v brew &>/dev/null; then
+        log_error "Homebrew not found. Please ensure Homebrew is installed first."
+        return 1
     fi
     
-    if [[ -z "$nvm_script" ]]; then
-        log_error "NVM not found. Please ensure it's installed via Homebrew."
+    # Check if NVM is installed
+    if ! brew list nvm &>/dev/null; then
+        log_error "NVM not found in Homebrew. Please ensure 'nvm' is included in your Brewfile."
+        echo "💡 Add 'brew \"nvm\"' to your Brewfile and run the script again."
         return 1
     fi
     
     if [[ "$DRY_RUN" != "true" ]]; then
+        # Set up NVM directories and environment
+        export NVM_DIR="$HOME/.nvm"
+        mkdir -p "$NVM_DIR"
+        
+        # Find NVM script location using brew --prefix
+        local nvm_script
+        nvm_script="$(brew --prefix nvm)/nvm.sh"
+        
+        if [[ ! -f "$nvm_script" ]]; then
+            log_error "NVM script not found at $nvm_script"
+            echo "💡 Try running: brew reinstall nvm"
+            return 1
+        fi
+        
+        log_info "Loading NVM from $nvm_script"
         # shellcheck source=/dev/null
         source "$nvm_script"
+        
+        # Verify NVM is available
+        if ! command -v nvm &>/dev/null; then
+            log_error "NVM command not available after sourcing script"
+            echo "💡 Try manually running: source $(brew --prefix nvm)/nvm.sh"
+            return 1
+        fi
         
         # Install latest LTS version of Node.js
         log_info "Installing latest LTS version of Node.js..."
@@ -547,6 +569,8 @@ setup_node() {
         # Install useful global packages
         log_info "Installing useful global NPM packages..."
         npm install -g yarn typescript nodemon create-react-app
+    else
+        echo "  [DRY-RUN] Would set up Node.js via NVM"
     fi
     
     echo "🟢 Node.js development environment ready!"
